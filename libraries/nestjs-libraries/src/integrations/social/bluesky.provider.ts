@@ -6,7 +6,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
-  RefreshToken,
+  NotEnoughScopes,
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { BskyAgent, RichText } from '@atproto/api';
@@ -69,7 +69,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       {
         key: 'identifier',
         label: 'Identifier',
-        validation: `/^.+$/`,
+        validation: `/^.{3,}$/`,
         type: 'text' as const,
       },
       {
@@ -152,27 +152,21 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       service: body.service,
     });
 
-    try {
-      await agent.login({
-        identifier: body.identifier,
-        password: body.password,
-      });
-    } catch (err) {
-      throw new RefreshToken('bluesky', JSON.stringify(err), {} as BodyInit);
-    }
+    await agent.login({
+      identifier: body.identifier,
+      password: body.password,
+    });
 
     let loadCid = '';
     let loadUri = '';
     const cidUrl = [] as { cid: string; url: string; rev: string }[];
     for (const post of postDetails) {
       const images = await Promise.all(
-        post.media
-          ?.filter((p) => p.url.indexOf('mp4') === -1)
-          .map(async (p) => {
-            return await agent.uploadBlob(
-              new Blob([await reduceImageBySize(p.url)])
-            );
-          }) || []
+        post.media?.map(async (p) => {
+          return await agent.uploadBlob(
+            new Blob([await reduceImageBySize(p.url)])
+          );
+        }) || []
       );
 
       const rt = new RichText({

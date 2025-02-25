@@ -12,8 +12,6 @@ export interface PricingInnerInterface {
   image_generator?: boolean;
   image_generation_count: number;
   public_api: boolean;
-  webhooks: number;
-  autoPost: boolean;
 }
 export interface PricingInterface {
   [key: string]: PricingInnerInterface;
@@ -33,8 +31,6 @@ export const pricing: PricingInterface = {
     import_from_channels: false,
     image_generator: false,
     public_api: false,
-    webhooks: 0,
-    autoPost: false,
   },
   STANDARD: {
     current: 'STANDARD',
@@ -50,8 +46,6 @@ export const pricing: PricingInterface = {
     import_from_channels: true,
     image_generator: false,
     public_api: true,
-    webhooks: 2,
-    autoPost: false,
   },
   TEAM: {
     current: 'TEAM',
@@ -67,8 +61,6 @@ export const pricing: PricingInterface = {
     import_from_channels: true,
     image_generator: true,
     public_api: true,
-    webhooks: 10,
-    autoPost: true,
   },
   PRO: {
     current: 'PRO',
@@ -84,8 +76,6 @@ export const pricing: PricingInterface = {
     import_from_channels: true,
     image_generator: true,
     public_api: true,
-    webhooks: 30,
-    autoPost: true,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
@@ -101,7 +91,5 @@ export const pricing: PricingInterface = {
     import_from_channels: true,
     image_generator: true,
     public_api: true,
-    webhooks: 10000,
-    autoPost: true,
   },
 };

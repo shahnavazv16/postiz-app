@@ -101,12 +101,8 @@ export class PublicController {
     if (!req.cookies.track) {
       res.cookie('track', uniqueId, {
         domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-            }
-          : {}),
+        secure: true,
+        httpOnly: true,
         sameSite: 'none',
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
       });
@@ -115,12 +111,8 @@ export class PublicController {
     if (body.fbclid && !req.cookies.fbclid) {
       res.cookie('fbclid', body.fbclid, {
         domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-            }
-          : {}),
+        secure: true,
+        httpOnly: true,
         sameSite: 'none',
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
       });
@@ -132,7 +124,10 @@ export class PublicController {
   }
 
   @Post('/crypto/:path')
-  async cryptoPost(@Body() body: any, @Param('path') path: string) {
+  async cryptoPost(
+    @Body() body: any,
+    @Param('path') path: string
+  ) {
     console.log('cryptoPost', body, path);
     return this._nowpayments.processPayment(path, body);
   }

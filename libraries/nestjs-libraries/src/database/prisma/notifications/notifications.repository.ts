@@ -45,17 +45,6 @@ export class NotificationsRepository {
     });
   }
 
-  async getNotificationsSince(organizationId: string, since: string) {
-    return this._notifications.model.notifications.findMany({
-      where: {
-        organizationId,
-        createdAt: {
-          gte: new Date(since),
-        },
-      },
-    });
-  }
-
   async getNotifications(organizationId: string, userId: string) {
     const { lastReadNotifications } = (await this.getLastReadNotification(
       userId

@@ -7,7 +7,7 @@ import { capitalize } from 'lodash';
 import { useModals } from '@mantine/modals';
 import { TopTitle } from '@gitroom/frontend/components/launches/helpers/top.title.component';
 import { Input } from '@gitroom/react/form/input';
-import { useForm, FormProvider, useWatch } from 'react-hook-form';
+import { useForm, FormProvider, useWatch, SubmitHandler } from 'react-hook-form';
 import { Select } from '@gitroom/react/form/select';
 import { Checkbox } from '@gitroom/react/form/checkbox';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
@@ -52,7 +52,7 @@ export const AddMember = () => {
     name: 'sendEmail',
   });
 
-  const submit = useCallback(
+  const submit: SubmitHandler<any> = useCallback(
     async (values: { email: string; role: string; sendEmail: boolean }) => {
       const { url } = await (
         await fetch('/settings/team', {
@@ -186,7 +186,8 @@ export const TeamsComponent = () => {
 
   return (
     <div className="flex flex-col">
-      <h3 className="text-[20px]">Team Members</h3>
+      <h2 className="text-[24px] mb-[24px]">Team Members</h2>
+      <h3 className="text-[20px]">Account Managers</h3>
       <div className="text-customColor18 mt-[4px]">
         Invite your assistant or team member to manage your account
       </div>
@@ -201,8 +202,8 @@ export const TeamsComponent = () => {
                 {p.role === 'USER'
                   ? 'User'
                   : p.role === 'ADMIN'
-                  ? 'Admin'
-                  : 'Super Admin'}
+                    ? 'Admin'
+                    : 'Super Admin'}
               </div>
               {+myLevel > +getLevel(p.role) ? (
                 <div className="flex-1 flex justify-end">
@@ -237,7 +238,7 @@ export const TeamsComponent = () => {
           ))}
         </div>
         <div>
-          <Button onClick={addMember}>
+          <Button className="rounded-[4px]" onClick={addMember}>
             Add another member
           </Button>
         </div>

@@ -12,12 +12,12 @@ export const useMenuItems = () => {
   return [
     ...(!isGeneral
       ? [
-          {
-            name: 'Analytics',
-            icon: 'analytics',
-            path: '/analytics',
-          },
-        ]
+        {
+          name: 'Analytics',
+          icon: 'analytics',
+          path: '/analytics',
+        },
+      ]
       : []),
     {
       name: isGeneral ? 'Calendar' : 'Launches',
@@ -26,22 +26,22 @@ export const useMenuItems = () => {
     },
     ...(isGeneral
       ? [
-          {
-            name: 'Analytics',
-            icon: 'analytics',
-            path: '/analytics',
-          },
-        ]
+        {
+          name: 'Analytics',
+          icon: 'analytics',
+          path: '/analytics',
+        },
+      ]
       : []),
     ...(!isGeneral
       ? [
-          {
-            name: 'Settings',
-            icon: 'settings',
-            path: '/settings',
-            role: ['ADMIN', 'SUPERADMIN'],
-          },
-        ]
+        {
+          name: 'Settings',
+          icon: 'settings',
+          path: '/settings',
+          role: ['ADMIN', 'SUPERADMIN'],
+        },
+      ]
       : []),
     {
       name: 'Plugs',
@@ -49,18 +49,21 @@ export const useMenuItems = () => {
       path: '/plugs',
     },
     {
+      name: 'Customers',
+      icon: 'customers',
+      path: '/customers',
+    },
+    {
+      name: 'Social Media',
+      icon: 'social-media',
+      path: '/social-media',
+    },
+    {
       name: 'Billing',
       icon: 'billing',
       path: '/billing',
       role: ['ADMIN', 'SUPERADMIN'],
       requireBilling: true,
-    },
-    {
-      name: 'Settings',
-      icon: 'settings',
-      path: '/settings',
-      role: ['ADMIN', 'SUPERADMIN'],
-      hide: true,
     },
     {
       name: 'Affiliate',
@@ -77,14 +80,12 @@ export const TopMenu: FC = () => {
   const user = useUser();
   const { billingEnabled } = useVariables();
   const menuItems = useMenuItems();
+
   return (
     <div className="flex flex-col h-full animate-normalFadeDown order-3 md:order-2 col-span-2 md:col-span-1">
       <ul className="gap-0 md:gap-5 flex flex-1 items-center text-[18px]">
         {menuItems
           .filter((f) => {
-            if (f.hide) {
-              return false;
-            }
             if (f.requireBilling && !billingEnabled) {
               return false;
             }
@@ -106,9 +107,6 @@ export const TopMenu: FC = () => {
                   'flex gap-2 items-center box px-[6px] md:px-[24px] py-[8px]',
                   menuItems
                     .filter((f) => {
-                      if (f.hide) {
-                        return false;
-                      }
                       if (f.role) {
                         return f.role.includes(user?.role!);
                       }

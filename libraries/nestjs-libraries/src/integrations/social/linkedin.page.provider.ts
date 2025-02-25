@@ -1,6 +1,7 @@
 import {
   AnalyticsData,
   AuthTokenDetails,
+  ClientInformation,
   PostDetails,
   PostResponse,
   SocialProvider,
@@ -14,8 +15,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 
 export class LinkedinPageProvider
   extends LinkedinProvider
-  implements SocialProvider
-{
+  implements SocialProvider {
   override identifier = 'linkedin-page';
   override name = 'LinkedIn Page';
   override isBetweenSteps = true;
@@ -46,8 +46,8 @@ export class LinkedinPageProvider
         body: new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token,
-          client_id: process.env.LINKEDIN_CLIENT_ID!,
-          client_secret: process.env.LINKEDIN_CLIENT_SECRET!,
+          client_id: this.config.LINKEDIN_CLIENT_ID!,
+          client_secret: this.config.LINKEDIN_CLIENT_SECRET!,
         }),
       })
     ).json();
@@ -92,14 +92,14 @@ export class LinkedinPageProvider
     return super.repostPostUsers(integration, originalIntegration, postId, information, false);
   }
 
-  override async generateAuthUrl() {
-    const state = makeId(6);
+  override async generateAuthUrl(clientInformation: ClientInformation, customerId: string) {
+    // const state = makeId(6);
+    const state = `customerId:${customerId},uniqueState:${makeId(6)}`;
     const codeVerifier = makeId(30);
-    const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&prompt=none&client_id=${
-      process.env.LINKEDIN_CLIENT_ID
-    }&redirect_uri=${encodeURIComponent(
-      `${process.env.FRONTEND_URL}/integrations/social/linkedin-page`
-    )}&state=${state}&scope=${encodeURIComponent(this.scopes.join(' '))}`;
+    const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&prompt=none&client_id=${this.config.LINKEDIN_CLIENT_ID
+      }&redirect_uri=${encodeURIComponent(
+        `${process.env.FRONTEND_URL}/integrations/social/linkedin-page`
+      )}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(this.scopes.join(' '))}`;
     return {
       url,
       codeVerifier,
@@ -115,7 +115,7 @@ export class LinkedinPageProvider
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202402',
           },
         }
       )
@@ -187,8 +187,8 @@ export class LinkedinPageProvider
       'redirect_uri',
       `${process.env.FRONTEND_URL}/integrations/social/linkedin-page`
     );
-    body.append('client_id', process.env.LINKEDIN_CLIENT_ID!);
-    body.append('client_secret', process.env.LINKEDIN_CLIENT_SECRET!);
+    body.append('client_id', this.config.LINKEDIN_CLIENT_ID!);
+    body.append('client_secret', this.config.LINKEDIN_CLIENT_SECRET!);
 
     const {
       access_token: accessToken,
@@ -257,7 +257,7 @@ export class LinkedinPageProvider
 
     const { elements }: { elements: Root[]; paging: any } = await (
       await this.fetch(
-        `https://api.linkedin.com/v2/organizationPageStatistics?q=organization&organization=${encodeURIComponent(
+        `https://api.linkedin.com/rest/organizationPageStatistics?q=organization&organization=${encodeURIComponent(
           `urn:li:organization:${id}`
         )}&timeIntervals=(timeRange:(start:${startDate},end:${endDate}),timeGranularityType:DAY)`,
         {
@@ -272,7 +272,7 @@ export class LinkedinPageProvider
 
     const { elements: elements2 }: { elements: Root[]; paging: any } = await (
       await this.fetch(
-        `https://api.linkedin.com/v2/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
+        `https://api.linkedin.com/rest/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
           `urn:li:organization:${id}`
         )}&timeIntervals=(timeRange:(start:${startDate},end:${endDate}),timeGranularityType:DAY)`,
         {
@@ -287,7 +287,7 @@ export class LinkedinPageProvider
 
     const { elements: elements3 }: { elements: Root[]; paging: any } = await (
       await this.fetch(
-        `https://api.linkedin.com/v2/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
+        `https://api.linkedin.com/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${encodeURIComponent(
           `urn:li:organization:${id}`
         )}&timeIntervals=(timeRange:(start:${startDate},end:${endDate}),timeGranularityType:DAY)`,
         {
@@ -404,7 +404,7 @@ export class LinkedinPageProvider
           headers: {
             'X-Restli-Protocol-Version': '2.0.0',
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202402',
             Authorization: `Bearer ${integration.token}`,
           },
         }
@@ -413,7 +413,7 @@ export class LinkedinPageProvider
 
     if (totalLikes >= +fields.likesAmount) {
       await timer(2000);
-      await this.fetch(`https://api.linkedin.com/v2/posts`, {
+      await this.fetch(`https://api.linkedin.com/rest/posts`, {
         body: JSON.stringify({
           author: `urn:li:organization:${integration.internalId}`,
           commentary: '',
@@ -433,7 +433,7 @@ export class LinkedinPageProvider
         headers: {
           'X-Restli-Protocol-Version': '2.0.0',
           'Content-Type': 'application/json',
-          'LinkedIn-Version': '202501',
+          'LinkedIn-Version': '202402',
           Authorization: `Bearer ${integration.token}`,
         },
       });
@@ -482,7 +482,7 @@ export class LinkedinPageProvider
           headers: {
             'X-Restli-Protocol-Version': '2.0.0',
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202402',
             Authorization: `Bearer ${integration.token}`,
           },
         }

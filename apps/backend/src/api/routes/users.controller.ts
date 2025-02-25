@@ -48,19 +48,17 @@ export class UsersController {
   async getSelf(
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() organization: Organization,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     if (!organization) {
       throw new HttpForbiddenException();
     }
-
-    const impersonate = req.cookies.impersonate || req.headers.impersonate;
     // @ts-ignore
     return {
       ...user,
       orgId: organization.id,
       // @ts-ignore
-      totalChannels: !process.env.STRIPE_PUBLISHABLE_KEY ? 10000 : organization?.subscription?.totalChannels || pricing.FREE.channel,
+      totalChannels: organization?.subscription?.totalChannels || pricing.FREE.channel,
       // @ts-ignore
       tier: organization?.subscription?.subscriptionTier ||
         (!process.env.STRIPE_PUBLISHABLE_KEY ? 'ULTIMATE' : 'FREE'),
@@ -69,10 +67,12 @@ export class UsersController {
       // @ts-ignore
       isLifetime: !!organization?.subscription?.isLifetime,
       admin: !!user.isSuperAdmin,
-      impersonate: !!impersonate,
+      impersonate: !!req.cookies.impersonate,
       allowTrial: organization?.allowTrial,
       // @ts-ignore
-      publicApi: organization?.users[0]?.role === 'SUPERADMIN' || organization?.users[0]?.role === 'ADMIN' ? organization?.apiKey  : '',
+      publicApi: organization?.users[0]?.role === 'SUPERADMIN' || organization?.users[0]?.role === 'ADMIN'
+          ? organization?.apiKey
+          : '',
     };
   }
 
@@ -105,19 +105,11 @@ export class UsersController {
 
     response.cookie('impersonate', id, {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
+      secure: true,
+      httpOnly: true,
+      sameSite: 'none',
       expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
     });
-
-    if (process.env.NOT_SECURED) {
-      response.header('impersonate', id);
-    }
   }
 
   @Post('/personal')
@@ -183,19 +175,11 @@ export class UsersController {
   ) {
     response.cookie('showorg', id, {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
+      secure: true,
+      httpOnly: true,
+      sameSite: 'none',
       expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
     });
-
-    if (process.env.NOT_SECURED) {
-      response.header('showorg', id);
-    }
 
     response.status(200).send();
   }
@@ -204,41 +188,29 @@ export class UsersController {
   logout(@Res({ passthrough: true }) response: Response) {
     response.cookie('auth', '', {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
+      secure: true,
+      httpOnly: true,
       maxAge: -1,
       expires: new Date(0),
+      sameSite: 'none',
     });
 
     response.cookie('showorg', '', {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
+      secure: true,
+      httpOnly: true,
       maxAge: -1,
       expires: new Date(0),
+      sameSite: 'none',
     });
 
     response.cookie('impersonate', '', {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
-        ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'none',
-          }
-        : {}),
+      secure: true,
+      httpOnly: true,
       maxAge: -1,
       expires: new Date(0),
+      sameSite: 'none',
     });
 
     response.status(200).send();
@@ -251,34 +223,22 @@ export class UsersController {
     @GetUserFromRequest() user: User,
     @RealIP() ip: string,
     @UserAgent() userAgent: string,
-    @Body()
-    body: { tt: TrackEnum; fbclid: string; additional: Record<string, any> }
+    @Body() body: { tt: TrackEnum; fbclid: string, additional: Record<string, any> }
   ) {
     const uniqueId = req?.cookies?.track || makeId(10);
     const fbclid = req?.cookies?.fbclid || body.fbclid;
-    await this._trackService.track(
-      uniqueId,
-      ip,
-      userAgent,
-      body.tt,
-      body.additional,
-      fbclid,
-      user
-    );
+    await this._trackService.track(uniqueId, ip, userAgent, body.tt, body.additional, fbclid, user);
     if (!req.cookies.track) {
       res.cookie('track', uniqueId, {
         domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
-          : {}),
+        secure: true,
+        httpOnly: true,
+        sameSite: 'none',
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
       });
     }
 
+    console.log('hello');
     res.status(200).json({
       track: uniqueId,
     });

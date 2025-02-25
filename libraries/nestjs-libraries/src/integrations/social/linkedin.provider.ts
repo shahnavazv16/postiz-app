@@ -1,5 +1,6 @@
 import {
   AuthTokenDetails,
+  ClientInformation,
   PostDetails,
   PostResponse,
   SocialProvider,
@@ -29,6 +30,19 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
   ];
   refreshWait = true;
 
+  config = {
+    LINKEDIN_CLIENT_ID: process.env.LINKEDIN_CLIENT_ID || '',
+    LINKEDIN_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET || '',
+  };
+
+  setConfig(newConfig: Record<string, string>): void {
+    this.config = { ...this.config, ...newConfig };
+  }
+
+  getConfig(): Record<string, string> {
+    return this.config;
+  }
+
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     const {
       access_token: accessToken,
@@ -43,8 +57,8 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
         body: new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token,
-          client_id: process.env.LINKEDIN_CLIENT_ID!,
-          client_secret: process.env.LINKEDIN_CLIENT_SECRET!,
+          client_id: this.config.LINKEDIN_CLIENT_ID!,
+          client_secret: this.config.LINKEDIN_CLIENT_SECRET!,
         }),
       })
     ).json();
@@ -80,14 +94,15 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async generateAuthUrl() {
-    const state = makeId(6);
+  async generateAuthUrl(clientInformation: ClientInformation, customerId: string) {
+    // const state = makeId(6);
+    const state = `customerId:${customerId},uniqueState:${makeId(6)}`;
     const codeVerifier = makeId(30);
-    const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${
-      process.env.LINKEDIN_CLIENT_ID
-    }&prompt=none&redirect_uri=${encodeURIComponent(
-      `${process.env.FRONTEND_URL}/integrations/social/linkedin`
-    )}&state=${state}&scope=${encodeURIComponent(this.scopes.join(' '))}`;
+    const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${this.config.LINKEDIN_CLIENT_ID
+      }&prompt=none&redirect_uri=${encodeURIComponent(
+        `${process.env.FRONTEND_URL}/integrations/social/linkedin`
+      )}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(this.scopes.join(' '))}`;
+
     return {
       url,
       codeVerifier,
@@ -105,12 +120,11 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     body.append('code', params.code);
     body.append(
       'redirect_uri',
-      `${process.env.FRONTEND_URL}/integrations/social/linkedin${
-        params.refresh ? `?refresh=${params.refresh}` : ''
+      `${process.env.FRONTEND_URL}/integrations/social/linkedin${params.refresh ? `?refresh=${params.refresh}` : ''
       }`
     );
-    body.append('client_id', process.env.LINKEDIN_CLIENT_ID!);
-    body.append('client_secret', process.env.LINKEDIN_CLIENT_SECRET!);
+    body.append('client_id', this.config.LINKEDIN_CLIENT_ID!);
+    body.append('client_secret', this.config.LINKEDIN_CLIENT_SECRET!);
 
     const {
       access_token: accessToken,
@@ -171,13 +185,13 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
 
     const { elements } = await (
       await this.fetch(
-        `https://api.linkedin.com/v2/organizations?q=vanityName&vanityName=${getCompanyVanity[1]}`,
+        `https://api.linkedin.com/rest/organizations?q=vanityName&vanityName=${getCompanyVanity[1]}`,
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202402',
             Authorization: `Bearer ${token}`,
           },
         }
@@ -203,15 +217,14 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       value: { uploadUrl, image, video, uploadInstructions, ...all },
     } = await (
       await this.fetch(
-        `https://api.linkedin.com/v2/${
-          fileName.indexOf('mp4') > -1 ? 'videos' : 'images'
+        `https://api.linkedin.com/rest/${fileName.indexOf('mp4') > -1 ? 'videos' : 'images'
         }?action=initializeUpload`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202402',
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
@@ -222,10 +235,10 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
                   : `urn:li:organization:${personId}`,
               ...(fileName.indexOf('mp4') > -1
                 ? {
-                    fileSizeBytes: picture.length,
-                    uploadCaptions: false,
-                    uploadThumbnail: false,
-                  }
+                  fileSizeBytes: picture.length,
+                  uploadCaptions: false,
+                  uploadThumbnail: false,
+                }
                 : {}),
             },
           }),
@@ -242,7 +255,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
         method: 'PUT',
         headers: {
           'X-Restli-Protocol-Version': '2.0.0',
-          'LinkedIn-Version': '202501',
+          'LinkedIn-Version': '202402',
           Authorization: `Bearer ${accessToken}`,
           ...(fileName.indexOf('mp4') > -1
             ? { 'Content-Type': 'application/octet-stream' }
@@ -256,7 +269,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
 
     if (fileName.indexOf('mp4') > -1) {
       const a = await this.fetch(
-        'https://api.linkedin.com/v2/videos?action=finalizeUpload',
+        'https://api.linkedin.com/rest/videos?action=finalizeUpload',
         {
           method: 'POST',
           body: JSON.stringify({
@@ -268,7 +281,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           }),
           headers: {
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202501',
+            'LinkedIn-Version': '202402',
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
@@ -335,13 +348,13 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
                 m.url.indexOf('mp4') > -1
                   ? Buffer.from(await readOrFetch(m.url))
                   : await sharp(await readOrFetch(m.url), {
-                      animated: lookup(m.url) === 'image/gif',
+                    animated: lookup(m.url) === 'image/gif',
+                  })
+                    .toFormat('jpeg')
+                    .resize({
+                      width: 1000,
                     })
-                      .toFormat('jpeg')
-                      .resize({
-                        width: 1000,
-                      })
-                      .toBuffer(),
+                    .toBuffer(),
                 type
               ),
               postId: p.id,
@@ -382,24 +395,24 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
         },
         ...(media_ids.length > 0
           ? {
-              content: {
-                ...(media_ids.length === 0
-                  ? {}
-                  : media_ids.length === 1
+            content: {
+              ...(media_ids.length === 0
+                ? {}
+                : media_ids.length === 1
                   ? {
-                      media: {
-                        id: media_ids[0],
-                      },
-                    }
+                    media: {
+                      id: media_ids[0],
+                    },
+                  }
                   : {
-                      multiImage: {
-                        images: media_ids.map((id) => ({
-                          id,
-                        })),
-                      },
-                    }),
-              },
-            }
+                    multiImage: {
+                      images: media_ids.map((id) => ({
+                        id,
+                      })),
+                    },
+                  }),
+            },
+          }
           : {}),
         lifecycleState: 'PUBLISHED',
         isReshareDisabledByAuthor: false,
@@ -472,7 +485,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     isPersonal = true
   ) {
     try {
-      await this.fetch(`https://api.linkedin.com/v2/posts`, {
+      await this.fetch(`https://api.linkedin.com/rest/posts`, {
         body: JSON.stringify({
           author:
             (isPersonal ? 'urn:li:person:' : `urn:li:organization:`) +
@@ -494,7 +507,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
         headers: {
           'X-Restli-Protocol-Version': '2.0.0',
           'Content-Type': 'application/json',
-          'LinkedIn-Version': '202501',
+          'LinkedIn-Version': '202402',
           Authorization: `Bearer ${integration.token}`,
         },
       });

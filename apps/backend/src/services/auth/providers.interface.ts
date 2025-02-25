@@ -1,5 +1,5 @@
 export interface ProvidersInterface {
-    generateLink(query?: any): Promise<string> | string;
+    generateLink(): string;
     getToken(code: string): Promise<string>;
     getUser(providerToken: string): Promise<{email: string, id: string}> | false;
 }

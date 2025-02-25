@@ -32,8 +32,4 @@ export class TikTokDto {
   @IsIn(['true'])
   @IsDefined()
   isValidVideo: boolean;
-
-  @IsIn(['DIRECT_POST', 'UPLOAD'])
-  @IsString()
-  content_posting_method: 'DIRECT_POST' | 'UPLOAD';
 }

@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { Injectable } from '@nestjs/common';
-import { Organization, User } from '@prisma/client';
+import { OrderItems, Organization, User } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -104,9 +104,7 @@ export class StripeService {
       try {
         await stripe.paymentMethods.detach(paymentMethods.data[0].id);
         await stripe.subscriptions.cancel(event.data.object.id as string);
-      } catch (err) {
-        /*dont do anything*/
-      }
+      } catch (err) {/*dont do anything*/}
       return false;
     }
   }
@@ -124,12 +122,8 @@ export class StripeService {
       uniqueId: string;
     } = event.data.object.metadata;
 
-    try {
-      const check = await this.checkValidCard(event);
-      if (!check) {
-        return { ok: false };
-      }
-    } catch (err) {
+    const check = await this.checkValidCard(event);
+    if (!check) {
       return { ok: false };
     }
 

@@ -28,9 +28,8 @@ import { RootController } from '@gitroom/backend/api/routes/root.controller';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { ShortLinkService } from '@gitroom/nestjs-libraries/short-linking/short.link.service';
 import { Nowpayments } from '@gitroom/nestjs-libraries/crypto/nowpayments';
-import { WebhookController } from '@gitroom/backend/api/routes/webhooks.controller';
-import { SignatureController } from '@gitroom/backend/api/routes/signature.controller';
-import { AutopostController } from '@gitroom/backend/api/routes/autopost.controller';
+import { SocialMediaPlatformConfigController } from './routes/social-media-platform.controller';
+import { CustomersController } from './routes/customers.controller';
 
 const authenticatedController = [
   UsersController,
@@ -45,12 +44,13 @@ const authenticatedController = [
   MessagesController,
   CopilotController,
   AgenciesController,
-  WebhookController,
-  SignatureController,
-  AutopostController,
+  SocialMediaPlatformConfigController,
+  CustomersController,
 ];
 @Module({
-  imports: [UploadModule],
+  imports: [
+    UploadModule,
+  ],
   controllers: [
     RootController,
     StripeController,

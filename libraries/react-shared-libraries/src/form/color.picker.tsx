@@ -8,14 +8,12 @@ export const ColorPicker: FC<{
   name: string;
   label: string;
   enabled: boolean;
-  onChange?: (params: { target: { name: string, value: string } }) => void;
-  value?: string;
   canBeCancelled: boolean;
 }> = (props) => {
-  const { name, label, enabled,  value, canBeCancelled, onChange } = props;
+  const { name, label, enabled, canBeCancelled } = props;
   const form = useFormContext();
-  const color = onChange ? {onChange} : form.register(name);
-  const watch = onChange ? value : form.watch(name);
+  const color = form.register(name);
+  const watch = form.watch(name);
   const [enabledState, setEnabledState] = useState(!!watch);
 
   const enable = useCallback(async () => {
@@ -31,7 +29,9 @@ export const ColorPicker: FC<{
   if (!enabledState) {
     return (
       <div>
-        <Button onClick={enable}>Enable color picker</Button>
+        <Button onClick={enable}>
+          Enable color picker
+        </Button>
       </div>
     );
   }

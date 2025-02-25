@@ -1,6 +1,7 @@
 import {
   AnalyticsData,
   AuthTokenDetails,
+  ClientInformation,
   PostDetails,
   PostResponse,
   SocialProvider,
@@ -14,8 +15,7 @@ import { Integration } from '@prisma/client';
 
 export class InstagramProvider
   extends SocialAbstract
-  implements SocialProvider
-{
+  implements SocialProvider {
   identifier = 'instagram';
   name = 'Instagram\n(Facebook Business)';
   isBetweenSteps = true;
@@ -29,6 +29,18 @@ export class InstagramProvider
     'instagram_manage_comments',
     'instagram_manage_insights',
   ];
+  config = {
+    FACEBOOK_APP_ID: process.env.FACEBOOK_APP_ID || '',
+    FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET || '',
+  };
+
+  setConfig(newConfig: Record<string, string>): void {
+    this.config = { ...this.config, ...newConfig };
+  }
+
+  getConfig(): Record<string, string> {
+    return this.config;
+  }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     return {
@@ -67,16 +79,18 @@ export class InstagramProvider
     };
   }
 
-  async generateAuthUrl() {
-    const state = makeId(6);
+  async generateAuthUrl(clientInformation: ClientInformation, customerId: string) {
+    // const state = makeId(6);
+    const state = `customerId:${customerId},uniqueState:${makeId(6)}`;
     return {
       url:
         'https://www.facebook.com/v20.0/dialog/oauth' +
-        `?client_id=${process.env.FACEBOOK_APP_ID}` +
+        `?client_id=${this.config.FACEBOOK_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(
           `${process.env.FRONTEND_URL}/integrations/social/instagram`
         )}` +
-        `&state=${state}` +
+        // `&state=${state}` +
+        `&state=${encodeURIComponent(state)}` +
         `&scope=${encodeURIComponent(this.scopes.join(','))}`,
       codeVerifier: makeId(10),
       state,
@@ -91,24 +105,23 @@ export class InstagramProvider
     const getAccessToken = await (
       await this.fetch(
         'https://graph.facebook.com/v20.0/oauth/access_token' +
-          `?client_id=${process.env.FACEBOOK_APP_ID}` +
-          `&redirect_uri=${encodeURIComponent(
-            `${process.env.FRONTEND_URL}/integrations/social/instagram${
-              params.refresh ? `?refresh=${params.refresh}` : ''
-            }`
-          )}` +
-          `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
-          `&code=${params.code}`
+        `?client_id=${this.config.FACEBOOK_APP_ID}` +
+        `&redirect_uri=${encodeURIComponent(
+          `${process.env.FRONTEND_URL}/integrations/social/instagram${params.refresh ? `?refresh=${params.refresh}` : ''
+          }`
+        )}` +
+        `&client_secret=${this.config.FACEBOOK_APP_SECRET}` +
+        `&code=${params.code}`
       )
     ).json();
 
     const { access_token, expires_in, ...all } = await (
       await this.fetch(
         'https://graph.facebook.com/v20.0/oauth/access_token' +
-          '?grant_type=fb_exchange_token' +
-          `&client_id=${process.env.FACEBOOK_APP_ID}` +
-          `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
-          `&fb_exchange_token=${getAccessToken.access_token}`
+        '?grant_type=fb_exchange_token' +
+        `&client_id=${this.config.FACEBOOK_APP_ID}` +
+        `&client_secret=${this.config.FACEBOOK_APP_SECRET}` +
+        `&fb_exchange_token=${getAccessToken.access_token}`
       )
     ).json();
 
@@ -228,18 +241,18 @@ export class InstagramProvider
                 ? `video_url=${m.url}&media_type=STORIES`
                 : `video_url=${m.url}&media_type=REELS`
               : isStory
-              ? `video_url=${m.url}&media_type=STORIES`
-              : `video_url=${m.url}&media_type=VIDEO`
+                ? `video_url=${m.url}&media_type=STORIES`
+                : `video_url=${m.url}&media_type=VIDEO`
             : isStory
-            ? `image_url=${m.url}&media_type=STORIES`
-            : `image_url=${m.url}`;
+              ? `image_url=${m.url}&media_type=STORIES`
+              : `image_url=${m.url}`;
         console.log('in progress1');
 
         const collaborators =
           firstPost?.settings?.collaborators?.length && !isStory
             ? `&collaborators=${JSON.stringify(
-                firstPost?.settings?.collaborators.map((p) => p.label)
-              )}`
+              firstPost?.settings?.collaborators.map((p) => p.label)
+            )}`
             : ``;
 
         console.log(collaborators);
@@ -383,47 +396,21 @@ export class InstagramProvider
     const since = dayjs().subtract(date, 'day').unix();
 
     const { data, ...all } = await (
-      await this.fetch(
-        `https://graph.facebook.com/v20.0/${id}/insights?metric=follower_count,impressions,reach&access_token=${accessToken}&period=day&since=${since}&until=${until}`
+      await fetch(
+        `https://graph.facebook.com/v20.0/${id}/insights?metric=follower_count,impressions,reach,profile_views&access_token=${accessToken}&period=day&since=${since}&until=${until}`
       )
     ).json();
 
-    const { data: data2, ...all2 } = await (
-      await this.fetch(
-        `https://graph.facebook.com/v20.0/${id}/insights?metric_type=total_value&metric=likes,comments,shares,saves,replies&access_token=${accessToken}&period=day&since=${since}&until=${until}`
-      )
-    ).json();
-    const analytics = [];
-
-    analytics.push(
-      ...(data?.map((d: any) => ({
+    return (
+      data?.map((d: any) => ({
         label: d.title,
         percentageChange: 5,
         data: d.values.map((v: any) => ({
           total: v.value,
           date: dayjs(v.end_time).format('YYYY-MM-DD'),
         })),
-      })) || [])
+      })) || []
     );
-
-    analytics.push(
-      ...data2.map((d: any) => ({
-        label: d.title,
-        percentageChange: 5,
-        data: [
-          {
-            total: d.total_value.value,
-            date: dayjs().format('YYYY-MM-DD'),
-          },
-          {
-            total: d.total_value.value,
-            date: dayjs().add(1, 'day').format('YYYY-MM-DD'),
-          },
-        ],
-      }))
-    );
-
-    return analytics;
   }
 
   music(accessToken: string, data: { q: string }) {

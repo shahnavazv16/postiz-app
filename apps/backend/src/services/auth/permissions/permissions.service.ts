@@ -5,7 +5,6 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import dayjs from 'dayjs';
-import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
 
 export enum Sections {
   CHANNEL = 'channel',
@@ -16,7 +15,6 @@ export enum Sections {
   AI = 'ai',
   IMPORT_FROM_CHANNELS = 'import_from_channels',
   ADMIN = 'admin',
-  WEBHOOKS = 'webhooks',
 }
 
 export enum AuthorizationActions {
@@ -33,8 +31,7 @@ export class PermissionsService {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _postsService: PostsService,
-    private _integrationService: IntegrationService,
-    private _webhooksService: WebhooksService,
+    private _integrationService: IntegrationService
   ) {}
   async getPackageOptions(orgId: string) {
     const subscription =
@@ -92,14 +89,6 @@ export class PermissionsService {
           (subscription?.totalChannels || 0) > totalChannels
         ) {
           can(action, section);
-          continue;
-        }
-      }
-
-      if (section === Sections.WEBHOOKS) {
-        const totalWebhooks = await this._webhooksService.getTotal(orgId);
-        if (totalWebhooks < options.webhooks) {
-          can(AuthorizationActions.Create, section);
           continue;
         }
       }

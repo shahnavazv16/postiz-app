@@ -1,6 +1,7 @@
 import {
   AnalyticsData,
   AuthTokenDetails,
+  ClientInformation,
   PostDetails,
   PostResponse,
   SocialProvider,
@@ -21,6 +22,19 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     'pages_read_engagement',
     'read_insights',
   ];
+  config = {
+    FACEBOOK_APP_ID: process.env.FACEBOOK_APP_ID || '',
+    FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET || '',
+  };
+
+  setConfig(newConfig: Record<string, string>): void {
+    this.config = { ...this.config, ...newConfig };
+  }
+
+  getConfig(): Record<string, string> {
+    return this.config;
+  }
+
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     return {
       refreshToken: '',
@@ -33,16 +47,19 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async generateAuthUrl() {
-    const state = makeId(6);
+  async generateAuthUrl(clientInformation: ClientInformation, customerId: string) {
+    // const state = makeId(6);
+    // Generate a unique state value that includes the customerId
+    const state = `customerId:${customerId},uniqueState:${makeId(6)}`;
+
     return {
       url:
         'https://www.facebook.com/v20.0/dialog/oauth' +
-        `?client_id=${process.env.FACEBOOK_APP_ID}` +
+        `?client_id=${this.config.FACEBOOK_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(
           `${process.env.FRONTEND_URL}/integrations/social/facebook`
         )}` +
-        `&state=${state}` +
+        `&state=${encodeURIComponent(state)}` +
         `&scope=${this.scopes.join(',')}`,
       codeVerifier: makeId(10),
       state,
@@ -74,63 +91,70 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     code: string;
     codeVerifier: string;
     refresh?: string;
+    customerId?: string;
   }) {
-    const getAccessToken = await (
-      await this.fetch(
-        'https://graph.facebook.com/v20.0/oauth/access_token' +
-          `?client_id=${process.env.FACEBOOK_APP_ID}` +
+
+    try {
+      const getAccessToken = await (
+        await this.fetch(
+          'https://graph.facebook.com/v20.0/oauth/access_token' +
+          `?client_id=${this.config.FACEBOOK_APP_ID}` +
           `&redirect_uri=${encodeURIComponent(
-            `${process.env.FRONTEND_URL}/integrations/social/facebook${
-              params.refresh ? `?refresh=${params.refresh}` : ''
+            `${process.env.FRONTEND_URL}/integrations/social/facebook${params.refresh ? `?refresh=${params.refresh}` : ''
             }`
           )}` +
-          `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
+          `&client_secret=${this.config.FACEBOOK_APP_SECRET}` +
           `&code=${params.code}`
-      )
-    ).json();
+        )
+      ).json();
 
-    const { access_token } = await (
-      await this.fetch(
-        'https://graph.facebook.com/v20.0/oauth/access_token' +
+      const { access_token } = await (
+        await this.fetch(
+          'https://graph.facebook.com/v20.0/oauth/access_token' +
           '?grant_type=fb_exchange_token' +
-          `&client_id=${process.env.FACEBOOK_APP_ID}` +
-          `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
+          `&client_id=${this.config.FACEBOOK_APP_ID}` +
+          `&client_secret=${this.config.FACEBOOK_APP_SECRET}` +
           `&fb_exchange_token=${getAccessToken.access_token}&fields=access_token,expires_in`
-      )
-    ).json();
+        )
+      ).json();
 
-    const { data } = await (
-      await this.fetch(
-        `https://graph.facebook.com/v20.0/me/permissions?access_token=${access_token}`
-      )
-    ).json();
+      const { data } = await (
+        await this.fetch(
+          `https://graph.facebook.com/v20.0/me/permissions?access_token=${access_token}`
+        )
+      ).json();
 
-    const permissions = data
-      .filter((d: any) => d.status === 'granted')
-      .map((p: any) => p.permission);
-    this.checkScopes(this.scopes, permissions);
+      const permissions = data
+        .filter((d: any) => d.status === 'granted')
+        .map((p: any) => p.permission);
+      this.checkScopes(this.scopes, permissions);
 
-    const {
-      id,
-      name,
-      picture: {
-        data: { url },
-      },
-    } = await (
-      await this.fetch(
-        `https://graph.facebook.com/v20.0/me?fields=id,name,picture&access_token=${access_token}`
-      )
-    ).json();
+      const {
+        id,
+        name,
+        picture: {
+          data: { url },
+        },
+      } = await (
+        await this.fetch(
+          `https://graph.facebook.com/v20.0/me?fields=id,name,picture&access_token=${access_token}`
+        )
+      ).json();
 
-    return {
-      id,
-      name,
-      accessToken: access_token,
-      refreshToken: access_token,
-      expiresIn: dayjs().add(59, 'days').unix() - dayjs().unix(),
-      picture: url,
-      username: '',
-    };
+      return {
+        id,
+        name,
+        accessToken: access_token,
+        refreshToken: access_token,
+        expiresIn: dayjs().add(59, 'days').unix() - dayjs().unix(),
+        picture: url,
+        username: '',
+      };
+
+    }
+    catch (error: any) {
+      return 'Authentication failed';
+    }
   }
 
   async pages(accessToken: string) {
@@ -205,27 +229,27 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       const uploadPhotos = !firstPost?.media?.length
         ? []
         : await Promise.all(
-            firstPost.media.map(async (media) => {
-              const { id: photoId } = await (
-                await this.fetch(
-                  `https://graph.facebook.com/v20.0/${id}/photos?access_token=${accessToken}`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      url: media.url,
-                      published: false,
-                    }),
+          firstPost.media.map(async (media) => {
+            const { id: photoId } = await (
+              await this.fetch(
+                `https://graph.facebook.com/v20.0/${id}/photos?access_token=${accessToken}`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
                   },
-                  'upload images slides'
-                )
-              ).json();
+                  body: JSON.stringify({
+                    url: media.url,
+                    published: false,
+                  }),
+                },
+                'upload images slides'
+              )
+            ).json();
 
-              return { media_fbid: photoId };
-            })
-          );
+            return { media_fbid: photoId };
+          })
+        );
 
       const {
         id: postId,
@@ -312,12 +336,12 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
           d.name === 'page_impressions_unique'
             ? 'Page Impressions'
             : d.name === 'page_post_engagements'
-            ? 'Posts Engagement'
-            : d.name === 'page_daily_follows'
-            ? 'Page followers'
-            : d.name === 'page_video_views'
-            ? 'Videos views'
-            : 'Posts Impressions',
+              ? 'Posts Engagement'
+              : d.name === 'page_daily_follows'
+                ? 'Page followers'
+                : d.name === 'page_video_views'
+                  ? 'Videos views'
+                  : 'Posts Impressions',
         percentageChange: 5,
         data: d?.values?.map((v: any) => ({
           total: v.value,

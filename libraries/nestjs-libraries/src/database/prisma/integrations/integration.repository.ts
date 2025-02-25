@@ -117,6 +117,7 @@ export class IntegrationRepository {
       | undefined,
     oneTimeToken: boolean,
     org: string,
+    customerId: string | null,
     name: string,
     picture: string | undefined,
     type: 'article' | 'social',
@@ -146,6 +147,7 @@ export class IntegrationRepository {
           internalId,
           organizationId: org,
         },
+        customerId:customerId
       },
       create: {
         type: type as any,
@@ -162,6 +164,7 @@ export class IntegrationRepository {
         internalId,
         ...postTimes,
         organizationId: org,
+        customerId: customerId,
         refreshNeeded: false,
         rootInternalId: internalId.split('_').pop(),
         ...(customInstanceDetails ? { customInstanceDetails } : {}),
@@ -170,10 +173,6 @@ export class IntegrationRepository {
           : '[]',
       },
       update: {
-        ...(additionalSettings
-          ? { additionalSettings: JSON.stringify(additionalSettings) }
-          : {}),
-        ...(customInstanceDetails ? { customInstanceDetails } : {}),
         type: type as any,
         ...(!refresh
           ? {
@@ -190,6 +189,7 @@ export class IntegrationRepository {
           : {}),
         internalId,
         organizationId: org,
+        customerId: customerId,
         deletedAt: null,
         refreshNeeded: false,
       },
@@ -201,7 +201,8 @@ export class IntegrationRepository {
           await this._integration.model.integration.findFirst({
             where: {
               organizationId: org,
-              internalId: internalId,
+              customerId: customerId,
+              internalId: internalId
             },
           })
         )?.rootInternalId || internalId.split('_').pop()!;
@@ -212,6 +213,7 @@ export class IntegrationRepository {
             not: upsert.id,
           },
           organizationId: org,
+          customerId: customerId,
           rootInternalId: rootId,
         },
         data: {
